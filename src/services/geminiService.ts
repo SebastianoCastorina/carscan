@@ -74,44 +74,54 @@ Restituisci il risultato in formato JSON. Se un dato non è disponibile, usa "No
 
 export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
   let portalData = "";
-  
-  // Try to use a free public API for Italian license plates first
+  let infoTargaData: any = null;
+
+  // 1. Prova a usare l'API di InfoTarga tramite il nostro proxy server
   try {
-    // Note: Many free APIs are unreliable or have strict CORS/rate limits.
-    // We'll try to use a proxy or a known working endpoint if possible, 
-    // but fallback to Gemini if it fails.
-    const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.ilportaledellautomobilista.it/web/portale-automobilista/verifica-classe-ambientale-veicolo?p_p_id=VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=verificaTarga&p_p_cacheability=cacheLevelPage&p_p_col_id=column-1&p_p_col_count=1&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_tipoVeicolo=1&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_targa=${plate}`)}`);
-    
+    const response = await fetch(`/api/plate/${plate.toUpperCase()}`);
     if (response.ok) {
-      const data = await response.json();
-      const html = data.contents;
-      
-      // Very basic scraping attempt if the portal returns HTML
-      if (html && html.includes("Dati Veicolo")) {
-         portalData = html;
-      }
+      infoTargaData = await response.json();
+      portalData = JSON.stringify(infoTargaData);
     }
   } catch (e) {
-    console.warn("Failed to fetch from public registry, falling back to Gemini", e);
+    console.warn("Failed to fetch from InfoTarga API proxy", e);
   }
 
-  // Fallback to Gemini with a very specific prompt to search the web
+  // 2. Se InfoTarga ha fallito, prova il Portale dell'Automobilista (vecchio metodo)
+  if (!portalData) {
+    try {
+      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.ilportaledellautomobilista.it/web/portale-automobilista/verifica-classe-ambientale-veicolo?p_p_id=VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_tipoVeicolo=1&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_targa=${plate}`)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const html = data.contents;
+        if (html && html.includes("Dati Veicolo")) {
+           portalData = html;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch from public registry proxy", e);
+    }
+  }
+
+  // 3. Fallback a Gemini per interpretare i dati o cercare sul web
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview", 
-    contents: `Sei un sistema di verifica targhe. Devi trovare a quale veicolo corrisponde la targa italiana: "${plate}".
+    contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
     
-${portalData ? `Dati estratti dal Ministero: \n\n${portalData}\n\nUsa questi dati per identificare il veicolo.` : `Usa lo strumento googleSearch per cercare "targa ${plate}" o "${plate}" sul web.`}
+${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `Usa lo strumento googleSearch per cercare "targa ${plate}" o "${plate}" sul web.`}
 
-REGOLE FONDAMENTALI (PENA IL FALLIMENTO):
-1. Se trovi prove CERTE del veicolo associato a questa targa, restituisci i suoi dati.
-2. Se NON trovi prove certe, NON INVENTARE NULLA. È illegale inventare dati di targhe. Devi restituire un JSON con il campo 'make' impostato ESATTAMENTE a "Veicolo non trovato" e gli altri campi "N/D".
+REGOLE:
+1. Se i dati sopra contengono Marca, Modello, Anno e Cilindrata, usali.
+2. Se i dati sono assenti, cerca sul web.
+3. Se non trovi nulla di certo, restituisci 'Veicolo non trovato'.
 
 Restituisci ESATTAMENTE un oggetto JSON (senza markdown blocks, solo raw JSON) con i seguenti campi:
 - make: Casa costruttrice (es. "BMW") o "Veicolo non trovato"
 - model: Modello (es. "Serie 1")
 - series: Serie/Generazione
 - year: Anno di immatricolazione
-- engine: Motorizzazione
+- engine: Motorizzazione (es. "2.0 Diesel 150CV")
 - bollo: Prezzo stimato bollo
 - superbollo: Prezzo stimato superbollo
 - licensePlate: "${plate.toUpperCase()}"`,
@@ -138,29 +148,139 @@ export interface Listing {
   url: string;
   source: string;
   description: string;
+  price?: string;
+  imageUrl?: string;
+  mileage?: string;
 }
 
-export async function findSimilarCars(make: string, model: string, series: string): Promise<Listing[]> {
-  // Invece di usare l'IA che trova annunci vecchi e scaduti (link rotti),
-  // generiamo i link diretti alle ricerche live sui portali principali.
-  // Questo garantisce che i risultati siano sempre aggiornati e funzionanti.
-  
-  const makeFormatted = make.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  const modelFormatted = model.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  const query = encodeURIComponent(`${make} ${model} ${series}`.trim());
+export interface SearchFilters {
+  priceMin?: string;
+  priceMax?: string;
+  mileageMax?: string;
+  sellerType?: 'all' | 'private' | 'dealer';
+  sortBy?: 'relevance' | 'price_asc' | 'price_desc' | 'date_desc';
+}
 
-  return [
+export async function findSimilarCars(make: string, model: string, series: string, year?: string, filters?: SearchFilters): Promise<Listing[]> {
+  const cleanMake = make.toLowerCase();
+  let cleanModel = model.replace(new RegExp(`^${cleanMake}\\s+`, 'i'), '').trim();
+  
+  let searchQuery = cleanModel;
+  searchQuery = searchQuery.replace(/[()]/g, '').trim();
+
+  const noiseWords = [/facelift/gi, /restyling/gi, /lci/gi];
+  noiseWords.forEach(regex => {
+    searchQuery = searchQuery.replace(regex, '');
+  });
+  searchQuery = searchQuery.replace(/\s+/g, ' ').trim();
+
+  const query = `${make} ${searchQuery} ${year || ''}`.trim();
+
+  // Costruiamo i link di ricerca generici (sempre funzionanti)
+  const makeFormatted = make.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  
+  // AutoScout24 URL construction
+  let asSort = 'standard';
+  if (filters?.sortBy === 'price_asc') asSort = 'price';
+  if (filters?.sortBy === 'price_desc') asSort = '-price';
+  if (filters?.sortBy === 'date_desc') asSort = 'age';
+
+  let autoScoutUrl = `https://www.autoscout24.it/lst/${makeFormatted}?version=${encodeURIComponent(searchQuery)}&ustate=N,U&sort=${asSort}&desc=0&cy=I`;
+  
+  if (year && !isNaN(parseInt(year))) {
+    autoScoutUrl += `&fregfrom=${year}&fregto=${year}`;
+  }
+  if (filters?.priceMin) autoScoutUrl += `&pricefrom=${filters.priceMin}`;
+  if (filters?.priceMax) autoScoutUrl += `&priceto=${filters.priceMax}`;
+  if (filters?.mileageMax) autoScoutUrl += `&kmto=${filters.mileageMax}`;
+  if (filters?.sellerType === 'private') autoScoutUrl += `&custtype=P`;
+  if (filters?.sellerType === 'dealer') autoScoutUrl += `&custtype=D`;
+
+  // Subito.it URL construction
+  let subitoQuery = `${make} ${searchQuery}`;
+  if (year && !isNaN(parseInt(year))) {
+    subitoQuery += ` ${year}`;
+  }
+  let subitoUrl = `https://www.subito.it/annunci-italia/vendita/auto/?q=${encodeURIComponent(subitoQuery.trim())}`;
+  
+  if (filters?.priceMin) subitoUrl += `&ps=${filters.priceMin}`;
+  if (filters?.priceMax) subitoUrl += `&pe=${filters.priceMax}`;
+  if (filters?.mileageMax) subitoUrl += `&me=${filters.mileageMax}`;
+  if (filters?.sellerType === 'private') subitoUrl += `&seller=private`;
+  if (filters?.sellerType === 'dealer') subitoUrl += `&seller=company`;
+  
+  if (filters?.sortBy === 'price_asc') subitoUrl += `&order=priceasc`;
+  if (filters?.sortBy === 'price_desc') subitoUrl += `&order=pricedesc`;
+  if (filters?.sortBy === 'date_desc') subitoUrl += `&order=date`;
+
+  // AutoUncle URL construction
+  let autoUncleUrl = `https://www.autouncle.it/it/auto-usate?q=${encodeURIComponent(make + ' ' + searchQuery)}`;
+  if (filters?.priceMin) autoUncleUrl += `&min_price=${filters.priceMin}`;
+  if (filters?.priceMax) autoUncleUrl += `&max_price=${filters.priceMax}`;
+  if (year && !isNaN(parseInt(year))) {
+    autoUncleUrl += `&min_year=${year}&max_year=${year}`;
+  }
+
+  // Facebook Marketplace URL construction
+  let fbUrl = `https://www.facebook.com/marketplace/category/cars?query=${encodeURIComponent(make + ' ' + searchQuery)}`;
+  if (filters?.priceMin) fbUrl += `&minPrice=${filters.priceMin}`;
+  if (filters?.priceMax) fbUrl += `&maxPrice=${filters.priceMax}`;
+
+  // Google Search URL construction
+  let googleUrl = `https://www.google.it/search?q=${encodeURIComponent('comprare ' + make + ' ' + searchQuery + ' ' + (year || '') + ' usata')}`;
+
+  // Quattroruote URL construction
+  let quattroruoteUrl = `https://www.quattroruote.it/auto-usate/ricerca?q=${encodeURIComponent(make + ' ' + searchQuery)}`;
+  if (filters?.priceMin) quattroruoteUrl += `&prezzo_da=${filters.priceMin}`;
+  if (filters?.priceMax) quattroruoteUrl += `&prezzo_a=${filters.priceMax}`;
+
+  // Trovit URL construction
+  let trovitUrl = `https://auto.trovit.it/auto-usate/${encodeURIComponent(make + '-' + searchQuery.replace(/\s+/g, '-'))}`;
+  if (filters?.priceMin) trovitUrl += `?price_min=${filters.priceMin}`;
+  if (filters?.priceMax) trovitUrl += `${filters?.priceMin ? '&' : '?'}price_max=${filters.priceMax}`;
+
+  // Mitula URL construction
+  let mitulaUrl = `https://auto.mitula.it/auto/${encodeURIComponent(make + '-' + searchQuery.replace(/\s+/g, '-'))}`;
+
+  // Bakeca URL construction
+  let bakecaUrl = `https://www.bakeca.it/annunci/auto/?keyword=${encodeURIComponent(make + ' ' + searchQuery)}`;
+  if (filters?.priceMin) bakecaUrl += `&prezzo_da=${filters.priceMin}`;
+  if (filters?.priceMax) bakecaUrl += `&prezzo_a=${filters.priceMax}`;
+
+  // AlVolante URL construction
+  let alVolanteUrl = `https://www.alvolante.it/listino_auto/usato/${encodeURIComponent(make.toLowerCase())}/${encodeURIComponent(searchQuery.replace(/\s+/g, '-').toLowerCase())}`;
+
+  const genericLinks: Listing[] = [
     {
-      title: `Cerca ${make} ${model} su AutoScout24`,
+      title: `Vedi annunci per ${make} ${searchQuery} ${year ? `(${year})` : ''}`,
       source: "AutoScout24",
-      url: `https://www.autoscout24.it/lst/${makeFormatted}/${modelFormatted}`,
-      description: "Vedi tutti gli annunci attualmente attivi e disponibili in Italia su AutoScout24."
+      url: autoScoutUrl,
+      description: "Il più grande portale europeo. Ricerca diretta con i filtri applicati."
     },
     {
-      title: `Cerca ${make} ${model} su Subito.it`,
+      title: `Vedi annunci per ${make} ${searchQuery} ${year ? `(${year})` : ''}`,
       source: "Subito.it",
-      url: `https://www.subito.it/annunci-italia/vendita/auto/?q=${query}`,
-      description: "Trova occasioni da privati e concessionari nella tua zona su Subito.it."
+      url: subitoUrl,
+      description: "Il principale sito di annunci in Italia. Ricerca diretta con i filtri applicati."
+    },
+    {
+      title: `Vedi annunci per ${make} ${searchQuery} ${year ? `(${year})` : ''}`,
+      source: "Bakeca.it",
+      url: bakecaUrl,
+      description: "Sito di annunci gratuiti con una vasta sezione dedicata ai motori."
+    },
+    {
+      title: `Cerca sul Web`,
+      source: "Google Search",
+      url: googleUrl,
+      description: "Cerca su Google per trovare concessionari locali e altri portali minori."
     }
   ];
+
+  // Rimuoviamo la chiamata a Gemini per cercare annunci specifici perché:
+  // 1. Gli annunci inventati (allucinazioni) frustrano l'utente
+  // 2. Gli annunci reali scadono troppo in fretta
+  // 3. Evitiamo errori di "permission denied" con il tool googleSearch
+  
+  return genericLinks;
 }

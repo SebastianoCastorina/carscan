@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CameraCapture } from './components/CameraCapture';
 import { CarDetailsCard } from './components/CarDetailsCard';
 import { ListingsView } from './components/ListingsView';
-import { analyzeCarImage, analyzeLicensePlate, findSimilarCars, CarDetails, Listing } from './services/geminiService';
-import { Camera, AlertCircle, RefreshCcw, Search, Car } from 'lucide-react';
+import { analyzeCarImage, analyzeLicensePlate, findSimilarCars, CarDetails, Listing, SearchFilters } from './services/geminiService';
+import { Camera, AlertCircle, RefreshCcw, Search, Car, History, Bookmark, BookmarkCheck, Trash2 } from 'lucide-react';
 
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
@@ -14,6 +14,54 @@ export default function App() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [manualPlate, setManualPlate] = useState("");
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [savedSearches, setSavedSearches] = useState<CarDetails[]>([]);
+
+  useEffect(() => {
+    const savedPlates = localStorage.getItem('recentPlates');
+    if (savedPlates) {
+      try {
+        setRecentSearches(JSON.parse(savedPlates));
+      } catch (e) {}
+    }
+
+    const savedCars = localStorage.getItem('savedCars');
+    if (savedCars) {
+      try {
+        setSavedSearches(JSON.parse(savedCars));
+      } catch (e) {}
+    }
+  }, []);
+
+  const saveRecentSearch = (plate: string) => {
+    if (!plate || plate === "Non disponibile") return;
+    const upperPlate = plate.toUpperCase();
+    setRecentSearches(prev => {
+      const filtered = prev.filter(p => p !== upperPlate);
+      const updated = [upperPlate, ...filtered].slice(0, 3);
+      localStorage.setItem('recentPlates', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const toggleSaveCar = (car: CarDetails) => {
+    setSavedSearches(prev => {
+      const isSaved = prev.some(c => c.licensePlate === car.licensePlate && c.make === car.make);
+      let updated;
+      if (isSaved) {
+        updated = prev.filter(c => !(c.licensePlate === car.licensePlate && c.make === car.make));
+      } else {
+        updated = [car, ...prev].slice(0, 10); // Keep last 10 saved cars
+      }
+      localStorage.setItem('savedCars', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const isCarSaved = (car: CarDetails | null) => {
+    if (!car) return false;
+    return savedSearches.some(c => c.licensePlate === car.licensePlate && c.make === car.make);
+  };
 
   const handleCapture = async (base64Image: string) => {
     setImage(base64Image);
@@ -27,6 +75,9 @@ export default function App() {
     try {
       const details = await analyzeCarImage(base64Image);
       setCarDetails(details);
+      if (details.licensePlate) {
+        saveRecentSearch(details.licensePlate);
+      }
     } catch (err) {
       console.error(err);
       setError("Si è verificato un errore durante l'analisi dell'immagine. Riprova.");
@@ -35,20 +86,19 @@ export default function App() {
     }
   };
 
-  const handlePlateSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualPlate.trim()) return;
-    
+  const performPlateSearch = async (plate: string) => {
     setImage(null);
     setIsAnalyzing(true);
     setError(null);
     setCarDetails(null);
     setListings([]);
     setHasSearched(false);
+    setManualPlate(plate);
 
     try {
-      const details = await analyzeLicensePlate(manualPlate.toUpperCase());
+      const details = await analyzeLicensePlate(plate);
       setCarDetails(details);
+      saveRecentSearch(plate);
     } catch (err) {
       console.error(err);
       setError("Si è verificato un errore durante la ricerca della targa. Riprova.");
@@ -57,7 +107,13 @@ export default function App() {
     }
   };
 
-  const handleSearch = async () => {
+  const handlePlateSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualPlate.trim()) return;
+    await performPlateSearch(manualPlate.toUpperCase());
+  };
+
+  const handleSearch = async (filters?: SearchFilters) => {
     if (!carDetails) return;
     
     setIsSearching(true);
@@ -65,7 +121,7 @@ export default function App() {
     setError(null);
     
     try {
-      const results = await findSimilarCars(carDetails.make, carDetails.model, carDetails.series);
+      const results = await findSimilarCars(carDetails.make, carDetails.model, carDetails.series, carDetails.year, filters);
       setListings(results);
     } catch (err) {
       console.error(err);
@@ -156,7 +212,30 @@ export default function App() {
                   Cerca Veicolo
                 </button>
               </div>
-              <p className="text-sm text-gray-500 text-center mt-2">
+              
+              {recentSearches.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-2 text-gray-500 mb-3">
+                    <History size={16} />
+                    <h3 className="text-sm font-medium">Ricerche recenti</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {recentSearches.map((plate, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => performPlateSearch(plate)}
+                        disabled={isAnalyzing}
+                        className="px-4 py-2 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 text-gray-700 hover:text-blue-700 rounded-lg text-sm font-mono font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {plate}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-sm text-gray-500 text-center mt-4">
                 Inserisci la targa per identificare il veicolo e cercare annunci simili sul web.
               </p>
             </form>
@@ -188,7 +267,20 @@ export default function App() {
 
             {carDetails && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <CarDetailsCard details={carDetails} />
+                <div className="relative">
+                  <CarDetailsCard details={carDetails} />
+                  <button
+                    onClick={() => toggleSaveCar(carDetails)}
+                    className={`absolute top-4 right-4 p-2 rounded-full shadow-sm transition-colors ${
+                      isCarSaved(carDetails) 
+                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' 
+                        : 'bg-white text-gray-400 hover:text-blue-600 hover:bg-gray-50'
+                    }`}
+                    aria-label={isCarSaved(carDetails) ? "Rimuovi dai salvati" : "Salva veicolo"}
+                  >
+                    {isCarSaved(carDetails) ? <BookmarkCheck size={24} /> : <Bookmark size={24} />}
+                  </button>
+                </div>
                 
                 <ListingsView
                   listings={listings}
@@ -198,6 +290,44 @@ export default function App() {
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {!image && !carDetails && !isAnalyzing && savedSearches.length > 0 && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+            <div className="flex items-center gap-2 text-gray-700 mb-2">
+              <Bookmark size={20} />
+              <h2 className="font-semibold">Veicoli salvati</h2>
+            </div>
+            <div className="space-y-3">
+              {savedSearches.map((car, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div>
+                    <p className="font-bold text-gray-900">{car.make} {car.model}</p>
+                    <p className="text-xs text-gray-500 font-mono">{car.licensePlate || 'Targa non disp.'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setCarDetails(car);
+                        setImage(null);
+                        setListings([]);
+                        setHasSearched(false);
+                      }}
+                      className="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Vedi
+                    </button>
+                    <button
+                      onClick={() => toggleSaveCar(car)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>
