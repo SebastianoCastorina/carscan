@@ -1,0 +1,7 @@
+{
+  "name": "AutoScanner Italia",
+  "description": "Identifica auto da una foto, calcola bollo/superbollo e trova annunci su Subito.it e AutoScout24.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
