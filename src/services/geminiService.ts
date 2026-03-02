@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
+// Modifica qui: usa import.meta.env invece di process.env
+const ai = new GoogleGenAI({ apiKey: (import.meta as any).env.VITE_GEMINI_API_KEY });
 export interface CarDetails {
   make: string;
   model: string;
@@ -9,8 +9,6 @@ export interface CarDetails {
   year: string;
   engine: string;
   bollo: string;
-  superbollo: string;
-  licensePlate: string | null;
 }
 
 export async function analyzeCarImage(base64Image: string): Promise<CarDetails> {

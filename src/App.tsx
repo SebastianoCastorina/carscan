@@ -4,6 +4,7 @@ import { CarDetailsCard } from './components/CarDetailsCard';
 import { ListingsView } from './components/ListingsView';
 import { analyzeCarImage, analyzeLicensePlate, findSimilarCars, CarDetails, Listing, SearchFilters } from './services/geminiService';
 import { Camera, AlertCircle, RefreshCcw, Search, Car, History, Bookmark, BookmarkCheck, Trash2 } from 'lucide-react';
+import { Tooltip } from './components/Tooltip';
 
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
@@ -151,13 +152,15 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight">AutoScanner</h1>
           </div>
           {(image || carDetails) && (
-            <button
-              onClick={handleReset}
-              className="text-gray-500 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Nuova scansione"
-            >
-              <RefreshCcw size={20} />
-            </button>
+            <Tooltip content="Nuova scansione" position="bottom">
+              <button
+                onClick={handleReset}
+                className="text-gray-500 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Nuova scansione"
+              >
+                <RefreshCcw size={20} />
+              </button>
+            </Tooltip>
           )}
         </div>
       </header>
@@ -221,15 +224,16 @@ export default function App() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {recentSearches.map((plate, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => performPlateSearch(plate)}
-                        disabled={isAnalyzing}
-                        className="px-4 py-2 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 text-gray-700 hover:text-blue-700 rounded-lg text-sm font-mono font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {plate}
-                      </button>
+                      <Tooltip key={index} content="Cerca di nuovo questa targa" position="top">
+                        <button
+                          type="button"
+                          onClick={() => performPlateSearch(plate)}
+                          disabled={isAnalyzing}
+                          className="px-4 py-2 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 text-gray-700 hover:text-blue-700 rounded-lg text-sm font-mono font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {plate}
+                        </button>
+                      </Tooltip>
                     ))}
                   </div>
                 </div>
@@ -269,17 +273,21 @@ export default function App() {
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="relative">
                   <CarDetailsCard details={carDetails} />
-                  <button
-                    onClick={() => toggleSaveCar(carDetails)}
-                    className={`absolute top-4 right-4 p-2 rounded-full shadow-sm transition-colors ${
-                      isCarSaved(carDetails) 
-                        ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' 
-                        : 'bg-white text-gray-400 hover:text-blue-600 hover:bg-gray-50'
-                    }`}
-                    aria-label={isCarSaved(carDetails) ? "Rimuovi dai salvati" : "Salva veicolo"}
-                  >
-                    {isCarSaved(carDetails) ? <BookmarkCheck size={24} /> : <Bookmark size={24} />}
-                  </button>
+                  <div className="absolute top-4 right-4">
+                    <Tooltip content={isCarSaved(carDetails) ? "Rimuovi dai salvati" : "Salva veicolo"} position="left">
+                      <button
+                        onClick={() => toggleSaveCar(carDetails)}
+                        className={`p-2 rounded-full shadow-sm transition-colors ${
+                          isCarSaved(carDetails) 
+                            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' 
+                            : 'bg-white text-gray-400 hover:text-blue-600 hover:bg-gray-50'
+                        }`}
+                        aria-label={isCarSaved(carDetails) ? "Rimuovi dai salvati" : "Salva veicolo"}
+                      >
+                        {isCarSaved(carDetails) ? <BookmarkCheck size={24} /> : <Bookmark size={24} />}
+                      </button>
+                    </Tooltip>
+                  </div>
                 </div>
                 
                 <ListingsView
@@ -307,23 +315,27 @@ export default function App() {
                     <p className="text-xs text-gray-500 font-mono">{car.licensePlate || 'Targa non disp.'}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setCarDetails(car);
-                        setImage(null);
-                        setListings([]);
-                        setHasSearched(false);
-                      }}
-                      className="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Vedi
-                    </button>
-                    <button
-                      onClick={() => toggleSaveCar(car)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <Tooltip content="Vedi dettagli auto" position="top">
+                      <button
+                        onClick={() => {
+                          setCarDetails(car);
+                          setImage(null);
+                          setListings([]);
+                          setHasSearched(false);
+                        }}
+                        className="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Vedi
+                      </button>
+                    </Tooltip>
+                    <Tooltip content="Rimuovi dai salvati" position="top">
+                      <button
+                        onClick={() => toggleSaveCar(car)}
+                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
               ))}

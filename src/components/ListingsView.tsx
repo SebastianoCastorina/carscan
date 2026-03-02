@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Listing, SearchFilters } from '../services/geminiService';
 import { ExternalLink, Search, AlertCircle, ArrowRight, Filter, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 interface ListingsViewProps {
   listings: Listing[];
@@ -35,16 +36,18 @@ export function ListingsView({ listings, isLoading, onSearch, hasSearched }: Lis
 
   const FilterSection = () => (
     <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-6">
-      <button 
-        onClick={() => setShowFilters(!showFilters)}
-        className="w-full flex items-center justify-between text-gray-700 font-semibold"
-      >
-        <div className="flex items-center gap-2">
-          <Filter size={18} />
-          <span>Filtri di ricerca</span>
-        </div>
-        {showFilters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-      </button>
+      <Tooltip content="Mostra/Nascondi filtri" position="top">
+        <button 
+          onClick={() => setShowFilters(!showFilters)}
+          className="w-full flex items-center justify-between text-gray-700 font-semibold"
+        >
+          <div className="flex items-center gap-2">
+            <Filter size={18} />
+            <span>Filtri di ricerca</span>
+          </div>
+          {showFilters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
+      </Tooltip>
 
       {showFilters && (
         <div className="mt-4 space-y-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
@@ -149,12 +152,14 @@ export function ListingsView({ listings, isLoading, onSearch, hasSearched }: Lis
       <FilterSection />
       <div className="flex items-center justify-between px-2 mb-4">
         <h3 className="text-xl font-bold text-gray-900">Annunci sul web</h3>
-        <button 
-          onClick={handleSearchClick}
-          className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1"
-        >
-          <RefreshCcw size={14} /> Aggiorna
-        </button>
+        <Tooltip content="Aggiorna risultati" position="top">
+          <button 
+            onClick={handleSearchClick}
+            className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1"
+          >
+            <RefreshCcw size={14} /> Aggiorna
+          </button>
+        </Tooltip>
       </div>
       <p className="text-sm text-gray-500 px-2 mb-4">
         Annunci trovati sul web per veicoli simili.
@@ -221,9 +226,11 @@ export function ListingsView({ listings, isLoading, onSearch, hasSearched }: Lis
                 }`}>
                   {listing.source}
                 </span>
-                <span className="text-sm text-blue-700 font-bold flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  Apri sito <ExternalLink size={14} />
-                </span>
+                <Tooltip content="Apri annuncio" position="top">
+                  <span className="text-sm text-blue-700 font-bold flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    Apri sito <ExternalLink size={14} />
+                  </span>
+                </Tooltip>
               </div>
             </div>
           </a>
