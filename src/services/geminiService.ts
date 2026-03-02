@@ -1,7 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Modifica qui: usa import.meta.env invece di process.env
-const ai = new GoogleGenAI({ apiKey: (import.meta as any).env.VITE_GEMINI_API_KEY });
+// Supporta sia l'ambiente locale (Vite) che quello cloud
+const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey: apiKey as string });
+
 export interface CarDetails {
   make: string;
   model: string;
@@ -9,6 +11,8 @@ export interface CarDetails {
   year: string;
   engine: string;
   bollo: string;
+  superbollo: string;
+  licensePlate: string | null;
 }
 
 export async function analyzeCarImage(base64Image: string): Promise<CarDetails> {
@@ -89,12 +93,12 @@ export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
   if (!portalData) {
     try {
       const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.ilportaledellautomobilista.it/web/portale-automobilista/verifica-classe-ambientale-veicolo?p_p_id=VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_tipoVeicolo=1&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_targa=${plate}`)}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         const html = data.contents;
         if (html && html.includes("Dati Veicolo")) {
-           portalData = html;
+          portalData = html;
         }
       }
     } catch (e) {
@@ -104,7 +108,7 @@ export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
 
   // 3. Fallback a Gemini per interpretare i dati o cercare sul web
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview", 
+    model: "gemini-3-flash-preview",
     contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
     
 ${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `Usa lo strumento googleSearch per cercare "targa ${plate}" o "${plate}" sul web.`}
@@ -162,7 +166,7 @@ export interface SearchFilters {
 export async function findSimilarCars(make: string, model: string, series: string, year?: string, filters?: SearchFilters): Promise<Listing[]> {
   const cleanMake = make.toLowerCase();
   let cleanModel = model.replace(new RegExp(`^${cleanMake}\\s+`, 'i'), '').trim();
-  
+
   let searchQuery = cleanModel;
   searchQuery = searchQuery.replace(/[()]/g, '').trim();
 
@@ -176,7 +180,7 @@ export async function findSimilarCars(make: string, model: string, series: strin
 
   // Costruiamo i link di ricerca generici (sempre funzionanti)
   const makeFormatted = make.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  
+
   // AutoScout24 URL construction
   let asSort = 'standard';
   if (filters?.sortBy === 'price_asc') asSort = 'price';
@@ -184,7 +188,7 @@ export async function findSimilarCars(make: string, model: string, series: strin
   if (filters?.sortBy === 'date_desc') asSort = 'age';
 
   let autoScoutUrl = `https://www.autoscout24.it/lst/${makeFormatted}?version=${encodeURIComponent(searchQuery)}&ustate=N,U&sort=${asSort}&desc=0&cy=I`;
-  
+
   if (year && !isNaN(parseInt(year))) {
     autoScoutUrl += `&fregfrom=${year}&fregto=${year}`;
   }
@@ -200,13 +204,13 @@ export async function findSimilarCars(make: string, model: string, series: strin
     subitoQuery += ` ${year}`;
   }
   let subitoUrl = `https://www.subito.it/annunci-italia/vendita/auto/?q=${encodeURIComponent(subitoQuery.trim())}`;
-  
+
   if (filters?.priceMin) subitoUrl += `&ps=${filters.priceMin}`;
   if (filters?.priceMax) subitoUrl += `&pe=${filters.priceMax}`;
   if (filters?.mileageMax) subitoUrl += `&me=${filters.mileageMax}`;
   if (filters?.sellerType === 'private') subitoUrl += `&seller=private`;
   if (filters?.sellerType === 'dealer') subitoUrl += `&seller=company`;
-  
+
   if (filters?.sortBy === 'price_asc') subitoUrl += `&order=priceasc`;
   if (filters?.sortBy === 'price_desc') subitoUrl += `&order=pricedesc`;
   if (filters?.sortBy === 'date_desc') subitoUrl += `&order=date`;
@@ -279,6 +283,6 @@ export async function findSimilarCars(make: string, model: string, series: strin
   // 1. Gli annunci inventati (allucinazioni) frustrano l'utente
   // 2. Gli annunci reali scadono troppo in fretta
   // 3. Evitiamo errori di "permission denied" con il tool googleSearch
-  
+
   return genericLinks;
 }
