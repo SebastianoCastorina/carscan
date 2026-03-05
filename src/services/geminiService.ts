@@ -23,7 +23,7 @@ export async function analyzeCarImage(base64Image: string): Promise<CarDetails> 
   const base64Data = base64Image.split(",")[1];
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3-flash",
     contents: {
       parts: [
         {
@@ -108,7 +108,7 @@ export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
 
   // 3. Fallback a Gemini per interpretare i dati o cercare sul web
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3-flash",
     contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
     
 ${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `Usa lo strumento googleSearch per cercare "targa ${plate}" o "${plate}" sul web.`}
