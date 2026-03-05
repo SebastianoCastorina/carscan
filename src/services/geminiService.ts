@@ -23,7 +23,8 @@ export async function analyzeCarImage(base64Image: string): Promise<CarDetails> 
   const base64Data = base64Image.split(",")[1];
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash",
+    // INSERITO IL MODELLO CORRETTO: gemini-1.5-flash
+    model: "gemini-1.5-flash", 
     contents: {
       parts: [
         {
@@ -33,18 +34,19 @@ export async function analyzeCarImage(base64Image: string): Promise<CarDetails> 
           },
         },
         {
-          text: `Analizza questa immagine di un'auto. FAI UNO SFORZO ESTREMO PER LEGGERE LA TARGA, anche se è sfocata, in prospettiva, buia o parzialmente coperta. Il formato italiano standard è AA000AA. Se alcuni caratteri sono illeggibili, usa un punto interrogativo (es. AB1??CD).
+          // ISTRUZIONI AGGIORNATE: Solo riconoscimento visivo, niente targa!
+          text: `Analizza questa immagine di un'auto. Identifica visivamente il veicolo basandoti ESCLUSIVAMENTE sul design, la carrozzeria, i fari e gli eventuali loghi visibili. IGNORA completamente l'eventuale targa presente.
 Identifica i seguenti dettagli:
 - Casa costruttrice (Make)
 - Modello (Model)
 - Serie/Generazione (Series)
-- Anno stimato (Year)
+- Anno di produzione stimato dal design (Year)
 - Motorizzazione probabile (Engine)
 - Prezzo stimato del bollo auto in Italia (Bollo)
 - Prezzo stimato del superbollo in Italia, se applicabile (Superbollo)
-- Numero di targa (License Plate) - FONDAMENTALE
 
-Restituisci il risultato in formato JSON. Se un dato non è disponibile, usa "Non disponibile".`,
+Imposta SEMPRE il campo "licensePlate" a null.
+Restituisci il risultato in formato JSON. Se un dato non è chiaramente deducibile dall'immagine, usa "Non disponibile".`,
         },
       ],
     },
@@ -60,7 +62,7 @@ Restituisci il risultato in formato JSON. Se un dato non è disponibile, usa "No
           engine: { type: Type.STRING },
           bollo: { type: Type.STRING },
           superbollo: { type: Type.STRING },
-          licensePlate: { type: Type.STRING, nullable: true },
+          licensePlate: { type: Type.STRING, nullable: true }, // Accetta null
         },
         required: ["make", "model", "series", "year", "engine", "bollo", "superbollo"],
       },
@@ -73,7 +75,6 @@ Restituisci il risultato in formato JSON. Se un dato non è disponibile, usa "No
 
   return JSON.parse(response.text) as CarDetails;
 }
-
 export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
   let portalData = "";
   let infoTargaData: any = null;
@@ -108,7 +109,7 @@ export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
 
   // 3. Fallback a Gemini per interpretare i dati o cercare sul web
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash",
+   model: "gemini-1.5-flash",
     contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
     
 ${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `Usa lo strumento googleSearch per cercare "targa ${plate}" o "${plate}" sul web.`}
