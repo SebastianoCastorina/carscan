@@ -26,8 +26,9 @@ const CAR_DETAILS_SCHEMA = {
     estimatedValue: { type: "string" },
     euroClass: { type: "string" },
     color: { type: "string" },
+    technicalNotes: { type: "string" },
   },
-  required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color"],
+  required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color", "technicalNotes"],
   additionalProperties: false,
 };
 
@@ -39,6 +40,7 @@ REGOLE DI IDENTIFICAZIONE:
    - Se il modello è ICONICO e UNIVOCO (es. Lamborghini Huracán, Ferrari 488, Porsche 911 GT3), fornisci i dati tecnici (CV, kW, Motore, Bollo) basandoti sull'identificazione visiva del modello, anche se non leggi il badge specifico.
    - Per auto comuni (es. BMW Serie 3, Audi A4), identifica la versione specifica SOLO SE leggibile sul veicolo (es. badge "420d", "V6"). Se non è leggibile, scrivi "Non identificabile con certezza dalla foto" nei campi tecnici.
 3. RICERCA: Usa le tue conoscenze per fornire dati accurati per l'Italia relativi a quel modello e anno specifico.
+4. NOTE TECNICHE: Includi una breve descrizione tecnica, curiosità o storia del modello (max 300 caratteri).
 
 Identifica:
 - Casa costruttrice (Make)
@@ -55,7 +57,8 @@ Identifica:
 - Potenza (Horsepower)
 - Valore stimato (Estimated Value)
 - Classe ambientale (Euro Class)
-- Colore (Color)`;
+- Colore (Color)
+- Note Tecniche (Technical Notes)`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -108,8 +111,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             estimatedValue: { type: Type.STRING },
             euroClass: { type: Type.STRING },
             color: { type: Type.STRING },
+            technicalNotes: { type: Type.STRING },
           },
-          required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color"],
+          required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color", "technicalNotes"],
         }
       }
     });

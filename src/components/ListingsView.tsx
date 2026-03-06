@@ -1,6 +1,21 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Listing, SearchFilters } from '../services/aiService';
-import { ExternalLink, Search, AlertCircle, ArrowRight, Filter, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react';
+import { 
+  ExternalLink, 
+  Search, 
+  Filter, 
+  ChevronDown, 
+  ChevronUp, 
+  ArrowRight,
+  Info,
+  Tag,
+  Clock,
+  MapPin,
+  Sparkles,
+  RefreshCcw,
+  AlertCircle
+} from 'lucide-react';
 import { Tooltip } from './Tooltip';
 
 interface ListingsViewProps {
@@ -25,215 +40,208 @@ export function ListingsView({ listings, isLoading, onSearch, hasSearched }: Lis
     onSearch(filters);
   };
 
-  if (isLoading) {
-    return (
-      <div className="w-full max-w-md mx-auto p-6 bg-white rounded-2xl shadow-md border border-gray-100 flex flex-col items-center justify-center gap-4">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-500 font-medium">Generazione link di ricerca...</p>
-      </div>
-    );
-  }
-
-  const FilterSection = () => (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-6">
-      <Tooltip content="Mostra/Nascondi filtri" position="top">
-        <button 
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 text-primary p-2.5 rounded-xl">
+            <Search size={20} />
+          </div>
+          <h2 className="text-xl font-black tracking-tight">Annunci Simili</h2>
+        </div>
+        <button
           onClick={() => setShowFilters(!showFilters)}
-          className="w-full flex items-center justify-between text-gray-700 font-semibold"
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            showFilters ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'bg-accent text-muted-foreground hover:bg-accent/80'
+          }`}
         >
-          <div className="flex items-center gap-2">
-            <Filter size={18} />
-            <span>Filtri di ricerca</span>
-          </div>
-          {showFilters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          <Filter size={16} />
+          Filtri
+          {showFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
-      </Tooltip>
+      </div>
 
-      {showFilters && (
-        <div className="mt-4 space-y-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Prezzo Min (€)</label>
-              <input 
-                type="number" 
-                placeholder="Es. 5000"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                value={filters.priceMin || ''}
-                onChange={(e) => handleFilterChange('priceMin', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Prezzo Max (€)</label>
-              <input 
-                type="number" 
-                placeholder="Es. 20000"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                value={filters.priceMax || ''}
-                onChange={(e) => handleFilterChange('priceMax', e.target.value)}
-              />
-            </div>
-          </div>
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-card p-6 rounded-3xl border border-border/50 shadow-xl space-y-6 mb-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Prezzo Min (€)</label>
+                  <input
+                    type="number"
+                    placeholder="Es. 5000"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    value={filters.priceMin || ''}
+                    onChange={(e) => handleFilterChange('priceMin', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Prezzo Max (€)</label>
+                  <input
+                    type="number"
+                    placeholder="Es. 20000"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    value={filters.priceMax || ''}
+                    onChange={(e) => handleFilterChange('priceMax', e.target.value)}
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Chilometraggio Max (km)</label>
-            <input 
-              type="number" 
-              placeholder="Es. 100000"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-              value={filters.mileageMax || ''}
-              onChange={(e) => handleFilterChange('mileageMax', e.target.value)}
-            />
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Km Max</label>
+                  <input
+                    type="number"
+                    placeholder="Es. 100000"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    value={filters.mileageMax || ''}
+                    onChange={(e) => handleFilterChange('mileageMax', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Venditore</label>
+                  <select
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none"
+                    value={filters.sellerType}
+                    onChange={(e) => handleFilterChange('sellerType', e.target.value)}
+                  >
+                    <option value="all">Tutti</option>
+                    <option value="private">Privati</option>
+                    <option value="dealer">Concessionari</option>
+                  </select>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Venditore</label>
-              <select 
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 bg-white"
-                value={filters.sellerType}
-                onChange={(e) => handleFilterChange('sellerType', e.target.value)}
+              <button
+                onClick={handleSearchClick}
+                className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
               >
-                <option value="all">Tutti</option>
-                <option value="private">Privato</option>
-                <option value="dealer">Concessionario</option>
-              </select>
+                <Search size={18} />
+                Applica Filtri e Cerca
+              </button>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Ordina per</label>
-              <select 
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 bg-white"
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-              >
-                <option value="relevance">Rilevanza</option>
-                <option value="price_asc">Prezzo crescente</option>
-                <option value="price_desc">Prezzo decrescente</option>
-                <option value="date_desc">Più recenti</option>
-              </select>
-            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!hasSearched && !isLoading && (
+        <div className="bg-card p-10 rounded-[2.5rem] border border-border/50 text-center shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-primary/5 rounded-full -ml-16 -mt-16" />
+          <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="text-primary" size={32} />
           </div>
+          <h3 className="text-xl font-black mb-3 tracking-tight">Trova la tua prossima auto</h3>
+          <p className="text-muted-foreground text-sm mb-8 px-4 leading-relaxed font-medium">
+            Analizziamo i principali portali di vendita (AutoScout24, Subito.it, ecc.) per trovare i migliori annunci corrispondenti.
+          </p>
+          <button
+            onClick={handleSearchClick}
+            className="bg-primary text-primary-foreground px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all flex items-center justify-center gap-2 mx-auto"
+          >
+            Cerca Annunci Ora
+            <ArrowRight size={18} />
+          </button>
         </div>
       )}
-    </div>
-  );
 
-  if (!hasSearched) {
-    return (
-      <div className="w-full max-w-md mx-auto">
-        <FilterSection />
-        <button
-          onClick={handleSearchClick}
-          className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors shadow-md"
-        >
-          <Search size={20} />
-          Cerca annunci simili sul web
-        </button>
-      </div>
-    );
-  }
+      {isLoading && (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-card p-6 rounded-3xl border border-border/50 animate-pulse flex gap-4">
+              <div className="w-24 h-24 bg-muted rounded-2xl shrink-0" />
+              <div className="flex-1 space-y-3 py-1">
+                <div className="h-4 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+                <div className="h-3 bg-muted rounded w-1/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-  if (listings.length === 0) {
-    return (
-      <div className="w-full max-w-md mx-auto p-6 bg-white rounded-2xl shadow-md border border-gray-100 flex flex-col items-center justify-center gap-4 text-center">
-        <AlertCircle size={32} className="text-gray-400" />
-        <p className="text-gray-600 font-medium">Nessun portale trovato o errore nella ricerca.</p>
-        <button
-          onClick={handleSearchClick}
-          className="mt-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-        >
-          Riprova
-        </button>
-      </div>
-    );
-  }
+      {hasSearched && !isLoading && listings.length === 0 && (
+        <div className="text-center py-16 bg-card/50 rounded-3xl border border-border/50">
+          <AlertCircle className="mx-auto text-muted-foreground/30 mb-4" size={48} />
+          <h3 className="text-lg font-bold">Nessun annuncio trovato</h3>
+          <p className="text-muted-foreground text-sm mt-1">Prova a modificare i filtri di ricerca.</p>
+        </div>
+      )}
 
-  return (
-    <div className="w-full max-w-md mx-auto space-y-4">
-      <FilterSection />
-      <div className="flex items-center justify-between px-2 mb-4">
-        <h3 className="text-xl font-bold text-gray-900">Annunci sul web</h3>
-        <Tooltip content="Aggiorna risultati" position="top">
-          <button 
-            onClick={handleSearchClick}
-            className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1"
-          >
-            <RefreshCcw size={14} /> Aggiorna
-          </button>
-        </Tooltip>
-      </div>
-      <p className="text-sm text-gray-500 px-2 mb-4">
-        Annunci trovati sul web per veicoli simili.
-      </p>
       <div className="space-y-4">
-        {listings.map((listing, i) => (
-          <a
-            key={i}
+        {listings.map((listing, index) => (
+          <motion.a
+            key={index}
             href={listing.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block bg-white rounded-2xl shadow-sm border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all duration-300 group overflow-hidden flex flex-col"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="block bg-card rounded-[2rem] border border-border/50 shadow-lg hover:shadow-2xl hover:border-primary/30 transition-all group relative overflow-hidden flex flex-col"
           >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150" />
+            
             {listing.imageUrl && listing.imageUrl !== "" && (
-              <div className="w-full h-56 bg-gray-100 relative overflow-hidden border-b border-gray-100">
+              <div className="w-full h-48 bg-muted relative overflow-hidden border-b border-border/50">
                 <img 
                   src={listing.imageUrl} 
                   alt={listing.title} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
-                    // Nascondi l'immagine se fallisce il caricamento
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </div>
             )}
-            
-            <div className="p-5 flex flex-col flex-grow">
-              <div className="flex justify-between items-start gap-4 mb-3">
-                <h4 className="font-extrabold text-gray-900 group-hover:text-blue-700 transition-colors text-xl leading-snug line-clamp-2">
-                  {listing.title}
-                </h4>
-                <div className="bg-gray-50 p-2 rounded-full group-hover:bg-blue-50 transition-colors shrink-0 border border-gray-100 group-hover:border-blue-200">
-                  <ExternalLink size={18} className="text-gray-400 group-hover:text-blue-600" />
-                </div>
-              </div>
 
-              {(listing.price || listing.mileage) && (
-                <div className="mb-3 flex flex-wrap items-baseline gap-3">
-                  {listing.price && (
-                    <span className="text-2xl font-black text-blue-600 tracking-tight">
-                      {listing.price}
-                    </span>
-                  )}
-                  {listing.mileage && (
-                    <span className="text-sm font-semibold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md">
-                      {listing.mileage}
-                    </span>
-                  )}
+            <div className="p-6 flex flex-col flex-grow relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest">{listing.source}</span>
+                <ExternalLink size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+              
+              <h3 className="font-black text-lg text-foreground group-hover:text-primary transition-colors truncate mb-2">
+                {listing.title}
+              </h3>
+
+              {listing.price && (
+                <div className="text-2xl font-black text-primary tracking-tighter mb-3">
+                  {listing.price}
                 </div>
               )}
 
-              <p className="text-gray-600 text-sm mb-5 line-clamp-3">
+              <p className="text-muted-foreground text-xs font-medium line-clamp-2 leading-relaxed mb-4">
                 {listing.description}
               </p>
-
-              <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
-                <span className={`text-xs font-bold px-3 py-1.5 rounded-lg uppercase tracking-wider ${
-                  listing.source.toLowerCase().includes('autoscout') ? 'bg-yellow-100 text-yellow-800' : 
-                  listing.source.toLowerCase().includes('subito') ? 'bg-red-100 text-red-800' : 
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {listing.source}
-                </span>
-                <Tooltip content="Apri annuncio" position="top">
-                  <span className="text-sm text-blue-700 font-bold flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    Apri sito <ExternalLink size={14} />
-                  </span>
+              
+              <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+                    <Clock size={12} />
+                    Oggi
+                  </div>
+                  {listing.mileage && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+                      <MapPin size={12} />
+                      {listing.mileage}
+                    </div>
+                  )}
+                </div>
+                <Tooltip content="Vedi annuncio" position="top">
+                  <div className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                    Apri <ArrowRight size={12} />
+                  </div>
                 </Tooltip>
               </div>
             </div>
-          </a>
+          </motion.a>
         ))}
       </div>
     </div>

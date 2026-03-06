@@ -14,6 +14,7 @@ export interface CarDetails {
   estimatedValue: string;
   euroClass: string;
   color: string;
+  technicalNotes?: string;
 }
 
 export async function analyzeCarImage(base64Image: string, retries = 3): Promise<CarDetails> {

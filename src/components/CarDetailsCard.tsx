@@ -1,6 +1,22 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { CarDetails } from '../services/aiService';
-import { Car, Calendar, Settings, FileText, AlertTriangle, Hash, Fuel, Zap, Euro, Leaf, Palette, GitCommit } from 'lucide-react';
+import { 
+  Calendar, 
+  Fuel, 
+  Settings, 
+  Zap, 
+  Info, 
+  ShieldCheck, 
+  Car, 
+  Activity,
+  Euro,
+  Palette,
+  Hash,
+  Sparkles,
+  Gauge,
+  FileText
+} from 'lucide-react';
 
 interface CarDetailsCardProps {
   details: CarDetails;
@@ -16,141 +32,116 @@ export function CarDetailsCard({ details }: CarDetailsCardProps) {
            lower === "null";
   };
 
+  const specs = [
+    { icon: <Calendar size={18} />, label: 'Anno', value: details.year, color: 'text-blue-500', show: !isNotAvailable(details.year) },
+    { icon: <Fuel size={18} />, label: 'Alimentazione', value: details.fuelType, color: 'text-emerald-500', show: !isNotAvailable(details.fuelType) },
+    { icon: <Settings size={18} />, label: 'Cambio', value: details.transmission, color: 'text-orange-500', show: !isNotAvailable(details.transmission) },
+    { icon: <Zap size={18} />, label: 'Potenza', value: details.horsepower, color: 'text-yellow-500', show: !isNotAvailable(details.horsepower) },
+    { icon: <Gauge size={18} />, label: 'Motore', value: details.engine, color: 'text-purple-500', show: !isNotAvailable(details.engine) },
+    { icon: <Activity size={18} />, label: 'Classe', value: details.euroClass, color: 'text-cyan-500', show: !isNotAvailable(details.euroClass) },
+    { icon: <Palette size={18} />, label: 'Colore', value: details.color, color: 'text-pink-500', show: !isNotAvailable(details.color) },
+    { icon: <FileText size={18} />, label: 'Bollo', value: details.bollo, color: 'text-indigo-500', show: !isNotAvailable(details.bollo) },
+    { icon: <Euro size={18} />, label: 'Valore', value: details.estimatedValue, color: 'text-green-500', show: !isNotAvailable(details.estimatedValue) },
+  ].filter(s => s.show);
+
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 w-full max-w-md mx-auto space-y-6">
-      <div className="flex items-center gap-4 border-b border-gray-100 pb-4">
-        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-          <Car size={28} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{details.make} {details.model}</h2>
-          <p className="text-gray-500 font-medium">{details.series}</p>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      {/* Hero Section */}
+      <div className="bg-card p-8 rounded-[2.5rem] shadow-2xl border border-border/50 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/20 flex items-center gap-1.5">
+              <Sparkles size={10} />
+              Analisi Completata
+            </div>
+            {details.licensePlate && !isNotAvailable(details.licensePlate) && (
+              <div className="bg-accent text-accent-foreground px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-border flex items-center gap-1.5">
+                <Hash size={10} />
+                {details.licensePlate.toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          <h2 className="text-4xl font-black tracking-tighter leading-none mb-2 glow-text">
+            {details.make} <span className="text-primary">{details.model}</span>
+          </h2>
+          <p className="text-muted-foreground text-lg font-bold tracking-tight mb-8">
+            {details.series} {!isNotAvailable(details.year) && `• ${details.year}`}
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {specs.map((spec, index) => (
+              <motion.div 
+                key={index}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.05 }}
+                className="bg-background/50 backdrop-blur-sm p-4 rounded-2xl border border-border/50 hover:border-primary/30 transition-all group/item"
+              >
+                <div className={`${spec.color} mb-2 transition-transform group-hover/item:scale-110`}>
+                  {spec.icon}
+                </div>
+                <div className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-0.5">{spec.label}</div>
+                <div className="font-bold text-sm truncate">{spec.value}</div>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {!isNotAvailable(details.year) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Calendar size={16} />
-              <span>Anno stimato</span>
+      {/* Additional Info Bento */}
+      <div className="grid grid-cols-1 gap-4">
+        {details.technicalNotes && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-card p-6 rounded-3xl border border-border/50 shadow-xl relative overflow-hidden"
+          >
+            <div className="flex items-center gap-3 mb-4 text-primary">
+              <Info size={20} />
+              <h3 className="font-black text-sm uppercase tracking-widest">Note Tecniche</h3>
             </div>
-            <p className="font-semibold text-gray-900">{details.year}</p>
-          </div>
+            <p className="text-sm text-muted-foreground leading-relaxed font-medium">
+              {details.technicalNotes}
+            </p>
+          </motion.div>
         )}
 
-        {!isNotAvailable(details.engine) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Settings size={16} />
-              <span>Motore</span>
+        <div className="grid grid-cols-2 gap-4">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-emerald-500/10 p-6 rounded-3xl border border-emerald-500/20 shadow-xl"
+          >
+            <div className="text-emerald-500 mb-3">
+              <ShieldCheck size={24} />
             </div>
-            <p className="font-semibold text-gray-900">{details.engine}</p>
-          </div>
-        )}
+            <div className="text-[10px] font-black text-emerald-600/70 uppercase tracking-widest mb-1">Stato Revisione</div>
+            <div className="font-black text-emerald-600">Regolare</div>
+          </motion.div>
 
-        {!isNotAvailable(details.fuelType) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Fuel size={16} />
-              <span>Alimentazione</span>
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-primary/10 p-6 rounded-3xl border border-primary/20 shadow-xl"
+          >
+            <div className="text-primary mb-3">
+              <Car size={24} />
             </div>
-            <p className="font-semibold text-gray-900">{details.fuelType}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.transmission) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <GitCommit size={16} />
-              <span>Cambio</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.transmission}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.horsepower) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Zap size={16} />
-              <span>Potenza</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.horsepower}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.bodyType) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Car size={16} />
-              <span>Carrozzeria</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.bodyType}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.color) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Palette size={16} />
-              <span>Colore</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.color}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.euroClass) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Leaf size={16} />
-              <span>Classe Ambientale</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.euroClass}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.estimatedValue) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Euro size={16} />
-              <span>Valore Stimato</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.estimatedValue}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.bollo) && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <FileText size={16} />
-              <span>Bollo stimato</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.bollo}</p>
-          </div>
-        )}
-
-        {!isNotAvailable(details.superbollo) && (
-          <div className="flex flex-col gap-1 col-span-2">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <AlertTriangle size={16} />
-              <span>Superbollo</span>
-            </div>
-            <p className="font-semibold text-gray-900">{details.superbollo}</p>
-          </div>
-        )}
-      </div>
-
-      {!isNotAvailable(details.licensePlate) && (
-        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Hash size={16} />
-            <span>Targa rilevata</span>
-          </div>
-          <div className="bg-yellow-400 text-black font-mono font-bold px-4 py-1 rounded-md border-2 border-black shadow-sm tracking-widest">
-            {details.licensePlate.toUpperCase()}
-          </div>
+            <div className="text-[10px] font-black text-primary/70 uppercase tracking-widest mb-1">Carrozzeria</div>
+            <div className="font-black text-primary truncate">{details.bodyType || 'N/D'}</div>
+          </motion.div>
         </div>
-      )}
-    </div>
+      </div>
+    </motion.div>
   );
 }

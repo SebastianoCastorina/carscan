@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { Camera, Upload, RefreshCw, Image as ImageIcon, ZoomIn, ZoomOut } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Camera, Upload, RefreshCw, Image as ImageIcon, ZoomIn, ZoomOut, X, Sparkles } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 
 interface CameraCaptureProps {
@@ -108,84 +109,46 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
 
   return (
     <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto">
-      <div 
-        className="relative w-full aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden shadow-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center touch-none"
+      <motion.div 
+        className="relative w-full aspect-[3/4] bg-card rounded-[2.5rem] overflow-hidden shadow-2xl border border-border/50 flex flex-col items-center justify-center touch-none group"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        whileHover={{ scale: 1.01 }}
+        transition={{ type: "spring", stiffness: 300 }}
       >
-        
-        {!isCameraActive ? (
-          <div className="flex flex-col items-center justify-center p-6 text-center h-full w-full">
-            <Tooltip content="Attiva fotocamera" position="bottom">
-              <button 
-                onClick={() => setIsCameraActive(true)}
-                className="w-32 h-32 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center hover:bg-blue-200 transition-colors shadow-sm mb-6 group"
-              >
-                <Camera size={48} className="group-hover:scale-110 transition-transform duration-300" />
-              </button>
-            </Tooltip>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Scatta una foto</h3>
-            <p className="text-gray-500 mb-8 text-sm px-4">
-              Inquadra l'auto o la targa per identificarla automaticamente.
-            </p>
-            
-            <Tooltip content="Carica immagine" position="bottom">
-              <label className="flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-all font-medium">
-                <ImageIcon size={20} className="text-blue-500" />
-                <span>Carica dalla galleria</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </Tooltip>
-          </div>
-        ) : (
-          <>
-            {/* @ts-ignore */}
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              screenshotQuality={0.8}
-              videoConstraints={{ facingMode }}
-              onUserMedia={handleUserMedia}
-              className="w-full h-full object-cover bg-black"
-            />
-            
-            <Tooltip content="Cambia fotocamera" position="left">
-              <button
-                onClick={toggleCamera}
-                className="absolute top-4 right-4 p-3 bg-black/50 text-white rounded-full backdrop-blur-sm hover:bg-black/70 transition-colors z-10"
-                aria-label="Cambia fotocamera"
-              >
-                <RefreshCw size={20} />
-              </button>
-            </Tooltip>
-
-            {zoomSupported && (
-              <div className="absolute bottom-32 left-0 right-0 flex justify-center items-center gap-3 px-8 z-10">
-                <ZoomOut size={20} className="text-white drop-shadow-md" />
-                <input
-                  type="range"
-                  min={zoomRange.min}
-                  max={zoomRange.max}
-                  step={zoomRange.step}
-                  value={zoom}
-                  onChange={(e) => applyZoom(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-black/30 rounded-lg appearance-none cursor-pointer backdrop-blur-sm accent-white"
-                />
-                <ZoomIn size={20} className="text-white drop-shadow-md" />
-              </div>
-            )}
-
-            <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-8 z-10">
-              <Tooltip content="Carica immagine" position="top">
-                <label className="p-4 bg-black/40 text-white rounded-full backdrop-blur-md cursor-pointer hover:bg-black/60 transition-colors">
-                  <Upload size={24} />
+        <AnimatePresence mode="wait">
+          {!isCameraActive ? (
+            <motion.div 
+              key="inactive"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center p-8 text-center h-full w-full relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+              
+              <Tooltip content="Attiva fotocamera" position="bottom">
+                <motion.button 
+                  onClick={() => setIsCameraActive(true)}
+                  className="w-36 h-36 bg-primary/10 text-primary rounded-full flex items-center justify-center hover:bg-primary/20 transition-all shadow-xl shadow-primary/5 mb-8 group relative"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <div className="absolute inset-0 rounded-full border-2 border-primary/20 animate-ping opacity-20" />
+                  <Camera size={56} className="group-hover:rotate-12 transition-transform duration-500" />
+                </motion.button>
+              </Tooltip>
+              
+              <h3 className="text-2xl font-black text-foreground mb-3 tracking-tight">Scansiona Auto</h3>
+              <p className="text-muted-foreground mb-10 text-sm px-8 font-medium leading-relaxed">
+                Inquadra il veicolo o la targa per estrarre i dati tecnici istantaneamente.
+              </p>
+              
+              <Tooltip content="Carica immagine" position="bottom">
+                <label className="flex items-center gap-3 px-8 py-4 bg-card text-foreground rounded-2xl shadow-lg border border-border cursor-pointer hover:bg-accent hover:border-primary/30 transition-all font-bold text-sm uppercase tracking-widest">
+                  <ImageIcon size={20} className="text-primary" />
+                  <span>Dalla Galleria</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -194,30 +157,106 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
                   />
                 </label>
               </Tooltip>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="active"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full h-full relative"
+            >
+              <div className="scanner-line" />
               
-              <Tooltip content="Scatta foto" position="top">
-                <button
-                  onClick={capture}
-                  className="w-20 h-20 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center shadow-xl hover:scale-105 transition-transform"
-                  aria-label="Scatta foto"
-                >
-                  <div className="w-16 h-16 bg-white rounded-full border-2 border-gray-400" />
-                </button>
-              </Tooltip>
+              {/* @ts-ignore */}
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                screenshotQuality={0.8}
+                videoConstraints={{ facingMode }}
+                onUserMedia={handleUserMedia}
+                className="w-full h-full object-cover bg-black"
+              />
+
+              <div className="absolute inset-0 pointer-events-none border-[20px] border-black/20" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-48 border-2 border-white/30 rounded-3xl pointer-events-none">
+                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl" />
+                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl" />
+                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl" />
+                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl" />
+              </div>
               
-              <Tooltip content="Annulla" position="top">
-                <button 
-                  onClick={() => setIsCameraActive(false)}
-                  className="w-14 h-14 flex items-center justify-center text-white/80 hover:text-white bg-black/40 rounded-full backdrop-blur-md transition-colors"
-                  aria-label="Chiudi fotocamera"
-                >
-                  <span className="text-xs font-bold uppercase">Annulla</span>
-                </button>
-              </Tooltip>
-            </div>
-          </>
-        )}
-      </div>
+              <div className="absolute top-6 right-6 flex flex-col gap-3">
+                <Tooltip content="Cambia" position="left">
+                  <button
+                    onClick={toggleCamera}
+                    className="p-3.5 bg-black/40 text-white rounded-2xl backdrop-blur-md hover:bg-primary transition-all shadow-xl"
+                    aria-label="Cambia fotocamera"
+                  >
+                    <RefreshCw size={20} />
+                  </button>
+                </Tooltip>
+                <Tooltip content="Chiudi" position="left">
+                  <button
+                    onClick={() => setIsCameraActive(false)}
+                    className="p-3.5 bg-black/40 text-white rounded-2xl backdrop-blur-md hover:bg-destructive transition-all shadow-xl"
+                    aria-label="Chiudi"
+                  >
+                    <X size={20} />
+                  </button>
+                </Tooltip>
+              </div>
+
+              {zoomSupported && (
+                <div className="absolute bottom-36 left-0 right-0 flex justify-center items-center gap-4 px-10 z-10">
+                  <ZoomOut size={18} className="text-white/70" />
+                  <input
+                    type="range"
+                    min={zoomRange.min}
+                    max={zoomRange.max}
+                    step={zoomRange.step}
+                    value={zoom}
+                    onChange={(e) => applyZoom(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer backdrop-blur-sm accent-primary"
+                  />
+                  <ZoomIn size={18} className="text-white/70" />
+                </div>
+              )}
+
+              <div className="absolute bottom-8 left-0 right-0 flex justify-center items-center gap-10 z-10">
+                <Tooltip content="Carica" position="top">
+                  <label className="p-4 bg-white/10 text-white rounded-2xl backdrop-blur-xl cursor-pointer hover:bg-white/20 transition-all border border-white/10">
+                    <Upload size={24} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                </Tooltip>
+                
+                <Tooltip content="Scansiona" position="top">
+                  <motion.button
+                    onClick={capture}
+                    className="w-24 h-24 bg-white rounded-full p-1.5 shadow-2xl relative group"
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <div className="w-full h-full rounded-full border-[6px] border-primary/20 flex items-center justify-center">
+                      <div className="w-14 h-14 bg-primary rounded-full shadow-lg shadow-primary/40 flex items-center justify-center">
+                        <Sparkles className="text-white" size={24} />
+                      </div>
+                    </div>
+                  </motion.button>
+                </Tooltip>
+                
+                <div className="w-14 h-14" /> {/* Spacer for balance */}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }

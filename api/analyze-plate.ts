@@ -26,8 +26,9 @@ const CAR_DETAILS_SCHEMA = {
     estimatedValue: { type: "string" },
     euroClass: { type: "string" },
     color: { type: "string" },
+    technicalNotes: { type: "string" },
   },
-  required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color"],
+  required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color", "technicalNotes"],
   additionalProperties: false,
 };
 
@@ -50,7 +51,8 @@ ${safePortalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${s
 REGOLE:
 1. Se i dati sopra contengono Marca, Modello, Anno e Cilindrata, usali.
 2. Se i dati sono assenti, prova a identificare il veicolo. Se non trovi nulla di certo, scrivi "Veicolo non trovato".
-3. Restituisci JSON.`;
+3. NOTE TECNICHE: Includi una breve descrizione tecnica, curiosità o storia del modello (max 300 caratteri).
+4. Restituisci JSON.`;
 
   // 1. Gemini
   try {
@@ -77,8 +79,9 @@ REGOLE:
             estimatedValue: { type: Type.STRING },
             euroClass: { type: Type.STRING },
             color: { type: Type.STRING },
+            technicalNotes: { type: Type.STRING },
           },
-          required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color"],
+          required: ["make", "model", "series", "year", "engine", "bollo", "superbollo", "licensePlate", "bodyType", "fuelType", "transmission", "horsepower", "estimatedValue", "euroClass", "color", "technicalNotes"],
         }
       }
     });
