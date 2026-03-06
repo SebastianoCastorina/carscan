@@ -25,7 +25,7 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
     trackRef.current = track;
     
     try {
-      const capabilities = track.getCapabilities();
+      const capabilities = track.getCapabilities() as any;
       if (capabilities.zoom) {
         setZoomSupported(true);
         setZoomRange({
@@ -34,7 +34,7 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
           step: capabilities.zoom.step || 0.1
         });
         
-        const settings = track.getSettings();
+        const settings = track.getSettings() as any;
         if (settings.zoom) {
           setZoom(settings.zoom);
         }
