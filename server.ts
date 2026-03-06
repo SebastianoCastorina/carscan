@@ -11,11 +11,23 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+  // Logging middleware
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
 
   // API Routes
   app.post("/api/analyze-image", async (req, res) => {
+    console.log("Received /api/analyze-image request");
     const { base64Image } = req.body;
+    if (!base64Image) {
+      console.error("No base64Image in request body");
+      return res.status(400).json({ error: "Immagine mancante" });
+    }
     
     try {
       const response = await openai.chat.completions.create({
@@ -163,6 +175,12 @@ REGOLE:
       console.error("OpenAI Plate Error:", error);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Catch-all for API routes to debug 404s
+  app.all("/api/*", (req, res) => {
+    console.warn(`404 API Route Not Found: ${req.method} ${req.url}`);
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
   });
 
   // Vite middleware for development
