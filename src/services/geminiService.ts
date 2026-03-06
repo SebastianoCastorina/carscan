@@ -11,7 +11,7 @@ export interface CarDetails {
   licensePlate: string | null;
 }
 
-export async function analyzeCarImage(base64Image: string): Promise<CarDetails> {
+export async function analyzeCarImage(base64Image: string, retries = 3): Promise<CarDetails> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const mimeType = base64Image.substring(
     base64Image.indexOf(":") + 1,
@@ -19,7 +19,9 @@ export async function analyzeCarImage(base64Image: string): Promise<CarDetails> 
   );
   const base64Data = base64Image.split(",")[1];
 
-  const response = await ai.models.generateContent({
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: {
       parts: [
@@ -69,9 +71,25 @@ Restituisci il risultato in formato JSON. Se un dato non è disponibile, usa "No
   }
 
   return JSON.parse(response.text) as CarDetails;
+    } catch (error: any) {
+      console.error(`Tentativo ${attempt + 1} fallito per l'immagine:`, error);
+      
+      // Se è l'ultimo tentativo o non è un errore 503 (sovraccarico), lancia l'errore
+      if (attempt === retries - 1 || (error.status !== 503 && !error.message?.includes("503") && !error.message?.includes("UNAVAILABLE"))) {
+        throw error;
+      }
+      
+      // Attendi prima di riprovare (backoff esponenziale: 1.5s, 3s, 6s...)
+      const delay = Math.pow(2, attempt) * 1500;
+      console.log(`Attendo ${delay}ms prima di riprovare...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error("Impossibile analizzare l'immagine dopo vari tentativi");
 }
 
-export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
+export async function analyzeLicensePlate(plate: string, retries = 3): Promise<CarDetails> {
   let portalData = "";
 
   // 1. Prova il Portale dell'Automobilista (vecchio metodo)
@@ -91,7 +109,10 @@ export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
 
   // 3. Fallback a Gemini per interpretare i dati
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await ai.models.generateContent({
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview", 
     contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
     
@@ -125,6 +146,20 @@ REGOLE:
     console.error("Failed to parse JSON for plate", e, response.text);
     throw new Error("Errore nel parsing dei dati della targa");
   }
+    } catch (error: any) {
+      console.error(`Tentativo ${attempt + 1} fallito per la targa:`, error);
+      
+      if (attempt === retries - 1 || (error.status !== 503 && !error.message?.includes("503") && !error.message?.includes("UNAVAILABLE"))) {
+        throw error;
+      }
+      
+      const delay = Math.pow(2, attempt) * 1500;
+      console.log(`Attendo ${delay}ms prima di riprovare...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error("Impossibile analizzare la targa dopo vari tentativi");
 }
 
 export interface Listing {

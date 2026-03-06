@@ -3,10 +3,16 @@ import { CameraCapture } from './components/CameraCapture';
 import { CarDetailsCard } from './components/CarDetailsCard';
 import { ListingsView } from './components/ListingsView';
 import { analyzeCarImage, analyzeLicensePlate, findSimilarCars, CarDetails, Listing, SearchFilters } from './services/geminiService';
-import { Camera, AlertCircle, RefreshCcw, Search, Car, History, Bookmark, BookmarkCheck, Trash2 } from 'lucide-react';
+import { Camera, AlertCircle, RefreshCcw, Search, Car, History, Bookmark, BookmarkCheck, Trash2, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { Tooltip } from './components/Tooltip';
+import { useAuth } from './contexts/AuthContext';
+import { AuthModal } from './components/AuthModal';
+import { ModeToggle } from './components/mode-toggle';
 
 export default function App() {
+  const { user, logout } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'scanner' | 'garage'>('scanner');
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [carDetails, setCarDetails] = useState<CarDetails | null>(null);
@@ -141,39 +147,138 @@ export default function App() {
     setManualPlate("");
   };
 
+  const handleGarageClick = () => {
+    if (!user) {
+      setShowAuthModal(true);
+    } else {
+      setActiveTab('garage');
+      handleReset();
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-12">
-      <header className="bg-white shadow-sm sticky top-0 z-10">
+    <div className="min-h-screen bg-background text-foreground font-sans pb-12 transition-colors duration-300">
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      
+      <header className="bg-card shadow-sm sticky top-0 z-10 border-b border-border">
         <div className="max-w-md mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveTab('scanner'); handleReset(); }}>
             <div className="bg-blue-600 text-white p-2 rounded-lg">
               <Camera size={24} />
             </div>
             <h1 className="text-xl font-bold tracking-tight">AutoScanner</h1>
           </div>
-          {(image || carDetails) && (
-            <Tooltip content="Nuova scansione" position="bottom">
-              <button
-                onClick={handleReset}
-                className="text-gray-500 hover:text-gray-900 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="Nuova scansione"
-              >
-                <RefreshCcw size={20} />
-              </button>
-            </Tooltip>
-          )}
+          <div className="flex items-center gap-2">
+            <ModeToggle />
+            
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Tooltip content="Il tuo Garage" position="bottom">
+                  <button
+                    onClick={handleGarageClick}
+                    className={`p-2 rounded-full transition-colors ${activeTab === 'garage' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' : 'text-muted-foreground hover:bg-accent'}`}
+                    aria-label="Garage"
+                  >
+                    <Bookmark size={20} />
+                  </button>
+                </Tooltip>
+                <Tooltip content={`Esci (${user.name})`} position="bottom">
+                  <button
+                    onClick={() => { logout(); setActiveTab('scanner'); }}
+                    className="text-muted-foreground hover:text-destructive p-2 rounded-full hover:bg-accent transition-colors"
+                    aria-label="Logout"
+                  >
+                    <LogOut size={20} />
+                  </button>
+                </Tooltip>
+              </div>
+            ) : (
+              <Tooltip content="Accedi" position="bottom">
+                <button
+                  onClick={() => setShowAuthModal(true)}
+                  className="text-muted-foreground hover:text-foreground p-2 rounded-full hover:bg-accent transition-colors"
+                  aria-label="Login"
+                >
+                  <LogIn size={20} />
+                </button>
+              </Tooltip>
+            )}
+
+            {activeTab === 'scanner' && (image || carDetails) && (
+              <Tooltip content="Nuova scansione" position="bottom">
+                <button
+                  onClick={handleReset}
+                  className="text-muted-foreground hover:text-foreground p-2 rounded-full hover:bg-accent transition-colors"
+                  aria-label="Nuova scansione"
+                >
+                  <RefreshCcw size={20} />
+                </button>
+              </Tooltip>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-8 space-y-8">
         {error && (
-          <div className="bg-red-50 text-red-700 p-4 rounded-xl flex items-start gap-3 border border-red-100">
+          <div className="bg-destructive/10 text-destructive p-4 rounded-xl flex items-start gap-3 border border-destructive/20">
             <AlertCircle className="shrink-0 mt-0.5" size={20} />
             <p className="text-sm font-medium">{error}</p>
           </div>
         )}
 
-        {!image && !carDetails && !isAnalyzing && (
+        {activeTab === 'garage' ? (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 p-3 rounded-xl">
+                <Bookmark size={24} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Il tuo Garage</h2>
+                <p className="text-muted-foreground text-sm">Auto salvate: {savedSearches.length}</p>
+              </div>
+            </div>
+
+            {savedSearches.length === 0 ? (
+              <div className="text-center py-12 bg-card rounded-2xl border border-border shadow-sm">
+                <Car size={48} className="mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Nessuna auto salvata</h3>
+                <p className="text-muted-foreground text-sm">
+                  Scansiona una targa o un'auto e clicca sull'icona del segnalibro per salvarla qui.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {savedSearches.map((car, index) => (
+                  <div key={index} className="bg-card p-4 rounded-xl border border-border shadow-sm relative group">
+                    <button 
+                      onClick={() => toggleSaveCar(car)}
+                      className="absolute top-4 right-4 text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-destructive/10 rounded-full"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 bg-accent rounded-lg flex items-center justify-center shrink-0">
+                        <Car className="text-muted-foreground" size={24} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg">{car.make} {car.model}</h3>
+                        <p className="text-muted-foreground text-sm">{car.series} • {car.year}</p>
+                        {car.licensePlate && (
+                          <div className="inline-block mt-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded border border-blue-200 dark:border-blue-800">
+                            {car.licensePlate}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {!image && !carDetails && !isAnalyzing && (
           <div className="space-y-8">
             <CameraCapture onCapture={handleCapture} />
             
@@ -301,46 +406,7 @@ export default function App() {
           </div>
         )}
 
-        {!image && !carDetails && !isAnalyzing && savedSearches.length > 0 && (
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-            <div className="flex items-center gap-2 text-gray-700 mb-2">
-              <Bookmark size={20} />
-              <h2 className="font-semibold">Veicoli salvati</h2>
-            </div>
-            <div className="space-y-3">
-              {savedSearches.map((car, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <div>
-                    <p className="font-bold text-gray-900">{car.make} {car.model}</p>
-                    <p className="text-xs text-gray-500 font-mono">{car.licensePlate || 'Targa non disp.'}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Tooltip content="Vedi dettagli auto" position="top">
-                      <button
-                        onClick={() => {
-                          setCarDetails(car);
-                          setImage(null);
-                          setListings([]);
-                          setHasSearched(false);
-                        }}
-                        className="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Vedi
-                      </button>
-                    </Tooltip>
-                    <Tooltip content="Rimuovi dai salvati" position="top">
-                      <button
-                        onClick={() => toggleSaveCar(car)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </Tooltip>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          </>
         )}
       </main>
     </div>
