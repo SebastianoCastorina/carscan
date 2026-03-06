@@ -1,5 +1,3 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
 export interface CarDetails {
   make: string;
   model: string;
@@ -9,83 +7,39 @@ export interface CarDetails {
   bollo: string;
   superbollo: string;
   licensePlate: string | null;
+  bodyType: string;
+  fuelType: string;
+  transmission: string;
+  horsepower: string;
+  estimatedValue: string;
+  euroClass: string;
+  color: string;
 }
 
 export async function analyzeCarImage(base64Image: string, retries = 3): Promise<CarDetails> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const mimeType = base64Image.substring(
-    base64Image.indexOf(":") + 1,
-    base64Image.indexOf(";")
-  );
-  const base64Data = base64Image.split(",")[1];
-
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            mimeType,
-            data: base64Data,
-          },
+      const response = await fetch("/api/analyze-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        {
-          text: `Analizza questa immagine di un'auto. FAI UNO SFORZO ESTREMO PER LEGGERE LA TARGA, anche se è sfocata, in prospettiva, buia o parzialmente coperta. Il formato italiano standard è AA000AA. Se alcuni caratteri sono illeggibili, usa un punto interrogativo (es. AB1??CD).
-Identifica i seguenti dettagli:
-- Casa costruttrice (Make)
-- Modello (Model)
-- Serie/Generazione (Series)
-- Anno stimato (Year)
-- Motorizzazione probabile (Engine)
-- Prezzo stimato del bollo auto in Italia (Bollo)
-- Prezzo stimato del superbollo in Italia, se applicabile (Superbollo)
-- Numero di targa (License Plate) - FONDAMENTALE
+        body: JSON.stringify({ base64Image }),
+      });
 
-Restituisci il risultato in formato JSON. Se un dato non è disponibile, usa "Non disponibile".`,
-        },
-      ],
-    },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          make: { type: Type.STRING },
-          model: { type: Type.STRING },
-          series: { type: Type.STRING },
-          year: { type: Type.STRING },
-          engine: { type: Type.STRING },
-          bollo: { type: Type.STRING },
-          superbollo: { type: Type.STRING },
-          licensePlate: { type: Type.STRING, nullable: true },
-        },
-        required: ["make", "model", "series", "year", "engine", "bollo", "superbollo"],
-      },
-    },
-  });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Errore durante l'analisi dell'immagine");
+      }
 
-  if (!response.text) {
-    throw new Error("Nessuna risposta dal modello");
-  }
-
-  return JSON.parse(response.text) as CarDetails;
+      return await response.json() as CarDetails;
     } catch (error: any) {
       console.error(`Tentativo ${attempt + 1} fallito per l'immagine:`, error);
-      
-      // Se è l'ultimo tentativo o non è un errore 503 (sovraccarico), lancia l'errore
-      if (attempt === retries - 1 || (error.status !== 503 && !error.message?.includes("503") && !error.message?.includes("UNAVAILABLE"))) {
-        throw error;
-      }
-      
-      // Attendi prima di riprovare (backoff esponenziale: 1.5s, 3s, 6s...)
+      if (attempt === retries - 1) throw error;
       const delay = Math.pow(2, attempt) * 1500;
-      console.log(`Attendo ${delay}ms prima di riprovare...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
   throw new Error("Impossibile analizzare l'immagine dopo vari tentativi");
 }
 
@@ -96,69 +50,41 @@ export async function analyzeLicensePlate(plate: string, retries = 3): Promise<C
   try {
     const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.ilportaledellautomobilista.it/web/portale-automobilista/verifica-classe-ambientale-veicolo?p_p_id=VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_tipoVeicolo=1&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_targa=${plate}`)}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        const html = data.contents;
-        if (html && html.includes("Dati Veicolo")) {
-           portalData = html;
-        }
+    if (response.ok) {
+      const data = await response.json();
+      const html = data.contents;
+      if (html && html.includes("Dati Veicolo")) {
+        portalData = html;
       }
-    } catch (e) {
-      console.warn("Failed to fetch from public registry proxy", e);
     }
+  } catch (e) {
+    console.warn("Failed to fetch from public registry proxy", e);
+  }
 
-  // 3. Fallback a Gemini per interpretare i dati
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
+  // 2. Chiama il backend per l'analisi OpenAI
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash", 
-    contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
-    
-${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `I dati non sono disponibili. Prova a indovinare il veicolo basandoti sulla targa, oppure restituisci 'Veicolo non trovato'.`}
+      const response = await fetch("/api/analyze-plate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ plate, portalData }),
+      });
 
-REGOLE:
-1. Se i dati sopra contengono Marca, Modello, Anno e Cilindrata, usali.
-2. Se i dati sono assenti, prova a dedurre il veicolo o restituisci 'Veicolo non trovato'.
-3. Restituisci ESATTAMENTE un oggetto JSON (senza markdown blocks, solo raw JSON) con i seguenti campi:
-- make: Casa costruttrice (es. "BMW") o "Veicolo non trovato"
-- model: Modello (es. "Serie 1")
-- series: Serie/Generazione
-- year: Anno di immatricolazione
-- engine: Motorizzazione (es. "2.0 Diesel 150CV")
-- bollo: Prezzo stimato bollo
-- superbollo: Prezzo stimato superbollo
-- licensePlate: "${plate.toUpperCase()}"`,
-    config: {
-      // Rimosso googleSearch per evitare errori di permessi
-    },
-  });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Errore durante l'analisi della targa");
+      }
 
-  if (!response.text) {
-    throw new Error("Nessuna risposta dal modello per la targa");
-  }
-
-  try {
-    const text = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
-    return JSON.parse(text) as CarDetails;
-  } catch (e) {
-    console.error("Failed to parse JSON for plate", e, response.text);
-    throw new Error("Errore nel parsing dei dati della targa");
-  }
+      return await response.json() as CarDetails;
     } catch (error: any) {
       console.error(`Tentativo ${attempt + 1} fallito per la targa:`, error);
-      
-      if (attempt === retries - 1 || (error.status !== 503 && !error.message?.includes("503") && !error.message?.includes("UNAVAILABLE"))) {
-        throw error;
-      }
-      
+      if (attempt === retries - 1) throw error;
       const delay = Math.pow(2, attempt) * 1500;
-      console.log(`Attendo ${delay}ms prima di riprovare...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
   throw new Error("Impossibile analizzare la targa dopo vari tentativi");
 }
 

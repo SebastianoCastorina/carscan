@@ -1,12 +1,21 @@
 import React from 'react';
-import { CarDetails } from '../services/geminiService';
-import { Car, Calendar, Settings, FileText, AlertTriangle, Hash } from 'lucide-react';
+import { CarDetails } from '../services/aiService';
+import { Car, Calendar, Settings, FileText, AlertTriangle, Hash, Fuel, Zap, Euro, Leaf, Palette, GitCommit } from 'lucide-react';
 
 interface CarDetailsCardProps {
   details: CarDetails;
 }
 
 export function CarDetailsCard({ details }: CarDetailsCardProps) {
+  const isNotAvailable = (val: string | null | undefined) => {
+    if (!val) return true;
+    const lower = val.toLowerCase();
+    return lower.includes("non disponibile") || 
+           lower.includes("non identificabile") || 
+           lower.includes("non visibile") ||
+           lower === "null";
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 w-full max-w-md mx-auto space-y-6">
       <div className="flex items-center gap-4 border-b border-gray-100 pb-4">
@@ -20,40 +29,118 @@ export function CarDetailsCard({ details }: CarDetailsCardProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Calendar size={16} />
-            <span>Anno stimato</span>
+        {!isNotAvailable(details.year) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Calendar size={16} />
+              <span>Anno stimato</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.year}</p>
           </div>
-          <p className="font-semibold text-gray-900">{details.year}</p>
-        </div>
+        )}
 
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Settings size={16} />
-            <span>Motore</span>
+        {!isNotAvailable(details.engine) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Settings size={16} />
+              <span>Motore</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.engine}</p>
           </div>
-          <p className="font-semibold text-gray-900">{details.engine}</p>
-        </div>
+        )}
 
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <FileText size={16} />
-            <span>Bollo stimato</span>
+        {!isNotAvailable(details.fuelType) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Fuel size={16} />
+              <span>Alimentazione</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.fuelType}</p>
           </div>
-          <p className="font-semibold text-gray-900">{details.bollo}</p>
-        </div>
+        )}
 
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <AlertTriangle size={16} />
-            <span>Superbollo</span>
+        {!isNotAvailable(details.transmission) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <GitCommit size={16} />
+              <span>Cambio</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.transmission}</p>
           </div>
-          <p className="font-semibold text-gray-900">{details.superbollo}</p>
-        </div>
+        )}
+
+        {!isNotAvailable(details.horsepower) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Zap size={16} />
+              <span>Potenza</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.horsepower}</p>
+          </div>
+        )}
+
+        {!isNotAvailable(details.bodyType) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Car size={16} />
+              <span>Carrozzeria</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.bodyType}</p>
+          </div>
+        )}
+
+        {!isNotAvailable(details.color) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Palette size={16} />
+              <span>Colore</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.color}</p>
+          </div>
+        )}
+
+        {!isNotAvailable(details.euroClass) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Leaf size={16} />
+              <span>Classe Ambientale</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.euroClass}</p>
+          </div>
+        )}
+
+        {!isNotAvailable(details.estimatedValue) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Euro size={16} />
+              <span>Valore Stimato</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.estimatedValue}</p>
+          </div>
+        )}
+
+        {!isNotAvailable(details.bollo) && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <FileText size={16} />
+              <span>Bollo stimato</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.bollo}</p>
+          </div>
+        )}
+
+        {!isNotAvailable(details.superbollo) && (
+          <div className="flex flex-col gap-1 col-span-2">
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <AlertTriangle size={16} />
+              <span>Superbollo</span>
+            </div>
+            <p className="font-semibold text-gray-900">{details.superbollo}</p>
+          </div>
+        )}
       </div>
 
-      {details.licensePlate && details.licensePlate !== "Non disponibile" && (
+      {!isNotAvailable(details.licensePlate) && (
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2 text-gray-500 text-sm">
             <Hash size={16} />

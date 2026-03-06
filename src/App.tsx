@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CameraCapture } from './components/CameraCapture';
 import { CarDetailsCard } from './components/CarDetailsCard';
 import { ListingsView } from './components/ListingsView';
-import { analyzeCarImage, analyzeLicensePlate, findSimilarCars, CarDetails, Listing, SearchFilters } from './services/geminiService';
+import { analyzeCarImage, analyzeLicensePlate, findSimilarCars, CarDetails, Listing, SearchFilters } from './services/aiService';
 import { Camera, AlertCircle, RefreshCcw, Search, Car, History, Bookmark, BookmarkCheck, Trash2, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { Tooltip } from './components/Tooltip';
 import { useAuth } from './contexts/AuthContext';
@@ -156,6 +156,12 @@ export default function App() {
     }
   };
 
+  const handleOpenSavedSearch = (car: CarDetails) => {
+    handleReset();
+    setCarDetails(car);
+    setActiveTab('scanner');
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground font-sans pb-12 transition-colors duration-300">
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
@@ -250,9 +256,16 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 {savedSearches.map((car, index) => (
-                  <div key={index} className="bg-card p-4 rounded-xl border border-border shadow-sm relative group">
+                  <div 
+                    key={index} 
+                    className="bg-card p-4 rounded-xl border border-border shadow-sm relative group cursor-pointer hover:border-blue-500 transition-colors"
+                    onClick={() => handleOpenSavedSearch(car)}
+                  >
                     <button 
-                      onClick={() => toggleSaveCar(car)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSaveCar(car);
+                      }}
                       className="absolute top-4 right-4 text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-destructive/10 rounded-full"
                     >
                       <Trash2 size={18} />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Listing, SearchFilters } from '../services/geminiService';
+import { Listing, SearchFilters } from '../services/aiService';
 import { ExternalLink, Search, AlertCircle, ArrowRight, Filter, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 
