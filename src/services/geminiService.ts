@@ -22,7 +22,7 @@ export async function analyzeCarImage(base64Image: string, retries = 3): Promise
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.5-flash",
     contents: {
       parts: [
         {
@@ -113,7 +113,7 @@ export async function analyzeLicensePlate(plate: string, retries = 3): Promise<C
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview", 
+    model: "gemini-2.5-flash", 
     contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
     
 ${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `I dati non sono disponibili. Prova a indovinare il veicolo basandoti sulla targa, oppure restituisci 'Veicolo non trovato'.`}
