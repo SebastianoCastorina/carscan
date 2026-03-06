@@ -1,9 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Supporta sia l'ambiente locale (Vite) che quello cloud
-const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-const ai = new GoogleGenAI({ apiKey: apiKey as string });
-
 export interface CarDetails {
   make: string;
   model: string;
@@ -16,6 +12,7 @@ export interface CarDetails {
 }
 
 export async function analyzeCarImage(base64Image: string): Promise<CarDetails> {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const mimeType = base64Image.substring(
     base64Image.indexOf(":") + 1,
     base64Image.indexOf(";")
@@ -23,8 +20,7 @@ export async function analyzeCarImage(base64Image: string): Promise<CarDetails> 
   const base64Data = base64Image.split(",")[1];
 
   const response = await ai.models.generateContent({
-    // INSERITO IL MODELLO CORRETTO: gemini-1.5-flash
-   model: "gemini-3-flash", 
+    model: "gemini-3-flash-preview",
     contents: {
       parts: [
         {
@@ -34,19 +30,18 @@ export async function analyzeCarImage(base64Image: string): Promise<CarDetails> 
           },
         },
         {
-          // ISTRUZIONI AGGIORNATE: Solo riconoscimento visivo, niente targa!
-          text: `Analizza questa immagine di un'auto. Identifica visivamente il veicolo basandoti ESCLUSIVAMENTE sul design, la carrozzeria, i fari e gli eventuali loghi visibili. IGNORA completamente l'eventuale targa presente.
+          text: `Analizza questa immagine di un'auto. FAI UNO SFORZO ESTREMO PER LEGGERE LA TARGA, anche se è sfocata, in prospettiva, buia o parzialmente coperta. Il formato italiano standard è AA000AA. Se alcuni caratteri sono illeggibili, usa un punto interrogativo (es. AB1??CD).
 Identifica i seguenti dettagli:
 - Casa costruttrice (Make)
 - Modello (Model)
 - Serie/Generazione (Series)
-- Anno di produzione stimato dal design (Year)
+- Anno stimato (Year)
 - Motorizzazione probabile (Engine)
 - Prezzo stimato del bollo auto in Italia (Bollo)
 - Prezzo stimato del superbollo in Italia, se applicabile (Superbollo)
+- Numero di targa (License Plate) - FONDAMENTALE
 
-Imposta SEMPRE il campo "licensePlate" a null.
-Restituisci il risultato in formato JSON. Se un dato non è chiaramente deducibile dall'immagine, usa "Non disponibile".`,
+Restituisci il risultato in formato JSON. Se un dato non è disponibile, usa "Non disponibile".`,
         },
       ],
     },
@@ -62,7 +57,7 @@ Restituisci il risultato in formato JSON. Se un dato non è chiaramente deducibi
           engine: { type: Type.STRING },
           bollo: { type: Type.STRING },
           superbollo: { type: Type.STRING },
-          licensePlate: { type: Type.STRING, nullable: true }, // Accetta null
+          licensePlate: { type: Type.STRING, nullable: true },
         },
         required: ["make", "model", "series", "year", "engine", "bollo", "superbollo"],
       },
@@ -75,51 +70,37 @@ Restituisci il risultato in formato JSON. Se un dato non è chiaramente deducibi
 
   return JSON.parse(response.text) as CarDetails;
 }
+
 export async function analyzeLicensePlate(plate: string): Promise<CarDetails> {
   let portalData = "";
-  let infoTargaData: any = null;
 
-  // 1. Prova a usare l'API di InfoTarga tramite il nostro proxy server
+  // 1. Prova il Portale dell'Automobilista (vecchio metodo)
   try {
-    const response = await fetch(`/api/plate/${plate.toUpperCase()}`);
-    if (response.ok) {
-      infoTargaData = await response.json();
-      portalData = JSON.stringify(infoTargaData);
-    }
-  } catch (e) {
-    console.warn("Failed to fetch from InfoTarga API proxy", e);
-  }
-
-  // 2. Se InfoTarga ha fallito, prova il Portale dell'Automobilista (vecchio metodo)
-  if (!portalData) {
-    try {
-      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.ilportaledellautomobilista.it/web/portale-automobilista/verifica-classe-ambientale-veicolo?p_p_id=VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_tipoVeicolo=1&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_targa=${plate}`)}`);
-
+    const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.ilportaledellautomobilista.it/web/portale-automobilista/verifica-classe-ambientale-veicolo?p_p_id=VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_tipoVeicolo=1&_VerificaClasseAmbientale_WAR_VerificaClasseAmbientale100SNAPSHOT_targa=${plate}`)}`);
+      
       if (response.ok) {
         const data = await response.json();
         const html = data.contents;
         if (html && html.includes("Dati Veicolo")) {
-          portalData = html;
+           portalData = html;
         }
       }
     } catch (e) {
       console.warn("Failed to fetch from public registry proxy", e);
     }
-  }
 
-  // 3. Fallback a Gemini per interpretare i dati o cercare sul web
+  // 3. Fallback a Gemini per interpretare i dati
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const response = await ai.models.generateContent({
- model: "gemini-3-flash",
+    model: "gemini-3-flash-preview", 
     contents: `Sei un sistema di verifica targhe professionale. Devi identificare il veicolo con targa italiana: "${plate}".
     
-${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `Usa lo strumento googleSearch per cercare "targa ${plate}" o "${plate}" sul web.`}
+${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `I dati non sono disponibili. Prova a indovinare il veicolo basandoti sulla targa, oppure restituisci 'Veicolo non trovato'.`}
 
 REGOLE:
 1. Se i dati sopra contengono Marca, Modello, Anno e Cilindrata, usali.
-2. Se i dati sono assenti, cerca sul web.
-3. Se non trovi nulla di certo, restituisci 'Veicolo non trovato'.
-
-Restituisci ESATTAMENTE un oggetto JSON (senza markdown blocks, solo raw JSON) con i seguenti campi:
+2. Se i dati sono assenti, prova a dedurre il veicolo o restituisci 'Veicolo non trovato'.
+3. Restituisci ESATTAMENTE un oggetto JSON (senza markdown blocks, solo raw JSON) con i seguenti campi:
 - make: Casa costruttrice (es. "BMW") o "Veicolo non trovato"
 - model: Modello (es. "Serie 1")
 - series: Serie/Generazione
@@ -129,7 +110,7 @@ Restituisci ESATTAMENTE un oggetto JSON (senza markdown blocks, solo raw JSON) c
 - superbollo: Prezzo stimato superbollo
 - licensePlate: "${plate.toUpperCase()}"`,
     config: {
-      tools: [{ googleSearch: {} }],
+      // Rimosso googleSearch per evitare errori di permessi
     },
   });
 
@@ -167,7 +148,7 @@ export interface SearchFilters {
 export async function findSimilarCars(make: string, model: string, series: string, year?: string, filters?: SearchFilters): Promise<Listing[]> {
   const cleanMake = make.toLowerCase();
   let cleanModel = model.replace(new RegExp(`^${cleanMake}\\s+`, 'i'), '').trim();
-
+  
   let searchQuery = cleanModel;
   searchQuery = searchQuery.replace(/[()]/g, '').trim();
 
@@ -181,7 +162,7 @@ export async function findSimilarCars(make: string, model: string, series: strin
 
   // Costruiamo i link di ricerca generici (sempre funzionanti)
   const makeFormatted = make.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
+  
   // AutoScout24 URL construction
   let asSort = 'standard';
   if (filters?.sortBy === 'price_asc') asSort = 'price';
@@ -189,7 +170,7 @@ export async function findSimilarCars(make: string, model: string, series: strin
   if (filters?.sortBy === 'date_desc') asSort = 'age';
 
   let autoScoutUrl = `https://www.autoscout24.it/lst/${makeFormatted}?version=${encodeURIComponent(searchQuery)}&ustate=N,U&sort=${asSort}&desc=0&cy=I`;
-
+  
   if (year && !isNaN(parseInt(year))) {
     autoScoutUrl += `&fregfrom=${year}&fregto=${year}`;
   }
@@ -205,13 +186,13 @@ export async function findSimilarCars(make: string, model: string, series: strin
     subitoQuery += ` ${year}`;
   }
   let subitoUrl = `https://www.subito.it/annunci-italia/vendita/auto/?q=${encodeURIComponent(subitoQuery.trim())}`;
-
+  
   if (filters?.priceMin) subitoUrl += `&ps=${filters.priceMin}`;
   if (filters?.priceMax) subitoUrl += `&pe=${filters.priceMax}`;
   if (filters?.mileageMax) subitoUrl += `&me=${filters.mileageMax}`;
   if (filters?.sellerType === 'private') subitoUrl += `&seller=private`;
   if (filters?.sellerType === 'dealer') subitoUrl += `&seller=company`;
-
+  
   if (filters?.sortBy === 'price_asc') subitoUrl += `&order=priceasc`;
   if (filters?.sortBy === 'price_desc') subitoUrl += `&order=pricedesc`;
   if (filters?.sortBy === 'date_desc') subitoUrl += `&order=date`;
@@ -284,6 +265,6 @@ export async function findSimilarCars(make: string, model: string, series: strin
   // 1. Gli annunci inventati (allucinazioni) frustrano l'utente
   // 2. Gli annunci reali scadono troppo in fretta
   // 3. Evitiamo errori di "permission denied" con il tool googleSearch
-
+  
   return genericLinks;
 }
