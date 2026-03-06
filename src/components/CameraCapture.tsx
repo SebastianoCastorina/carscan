@@ -150,6 +150,7 @@ export function CameraCapture({ onCapture }: CameraCaptureProps) {
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
+              screenshotQuality={0.8}
               videoConstraints={{ facingMode }}
               onUserMedia={handleUserMedia}
               className="w-full h-full object-cover bg-black"

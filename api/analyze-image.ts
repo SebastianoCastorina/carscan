@@ -67,6 +67,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Immagine mancante" });
   }
 
+  // Check size (approximate)
+  const sizeInMB = (base64Image.length * 0.75) / (1024 * 1024);
+  if (sizeInMB > 4) {
+    return res.status(413).json({ error: "Immagine troppo grande per Vercel (limite 4.5MB). L'app dovrebbe averla compressa automaticamente." });
+  }
+
   const base64Data = base64Image.split(',')[1] || base64Image;
   const mimeType = base64Image.split(';')[0].split(':')[1] || 'image/jpeg';
 

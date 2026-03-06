@@ -38,9 +38,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { plate, portalData } = req.body;
 
+  // Truncate portalData if it's too large (Vercel limit is 4.5MB)
+  const safePortalData = portalData && portalData.length > 500000 
+    ? portalData.substring(0, 500000) + "... [truncated]" 
+    : portalData;
+
   const PLATE_PROMPT = `Devi identificare il veicolo con targa italiana: "${plate}".
     
-${portalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${portalData}\n\n` : `I dati non sono disponibili. Verifica la targa e trova informazioni reali.`}
+${safePortalData ? `DATI RECUPERATI (Usa questi come fonte prioritaria): \n\n${safePortalData}\n\n` : `I dati non sono disponibili. Verifica la targa e trova informazioni reali.`}
 
 REGOLE:
 1. Se i dati sopra contengono Marca, Modello, Anno e Cilindrata, usali.

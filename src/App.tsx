@@ -3,6 +3,7 @@ import { CameraCapture } from './components/CameraCapture';
 import { CarDetailsCard } from './components/CarDetailsCard';
 import { ListingsView } from './components/ListingsView';
 import { analyzeCarImage, analyzeLicensePlate, findSimilarCars, CarDetails, Listing, SearchFilters } from './services/aiService';
+import { compressImage } from './utils/imageUtils';
 import { Camera, AlertCircle, RefreshCcw, Search, Car, History, Bookmark, BookmarkCheck, Trash2, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { Tooltip } from './components/Tooltip';
 import { useAuth } from './contexts/AuthContext';
@@ -80,7 +81,11 @@ export default function App() {
     setManualPlate("");
 
     try {
-      const details = await analyzeCarImage(base64Image);
+      // Compress image to avoid 413 Content Too Large on Vercel
+      console.log("Original image size:", (base64Image.length / 1024).toFixed(2), "KB");
+      const compressedImage = await compressImage(base64Image, 1200, 1200, 0.7);
+      console.log("Compressed image size:", (compressedImage.length / 1024).toFixed(2), "KB");
+      const details = await analyzeCarImage(compressedImage);
       setCarDetails(details);
       if (details.licensePlate) {
         saveRecentSearch(details.licensePlate);
